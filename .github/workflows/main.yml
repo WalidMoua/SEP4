@@ -1,0 +1,31 @@
+name: Code Analysis for IoT Folder
+
+on:
+  pull_request:
+    paths:
+      - 'IoT/**'  # Use a glob pattern to match changes in the 'IoT' folder
+
+jobs:
+  code_analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out the code in the 'IoT' folder
+      uses: actions/checkout@v2
+
+    - name: Install AVR toolchain
+      run: sudo apt-get install gcc-avr avr-libc  # Install AVR tools
+
+    - name: Build the code
+      run: avr-gcc -mmcu=atmega2560 -o firmware.elf IoT/source.c  # Adjust source and output filenames
+
+    - name: Run Clang Static Analyzer
+      run: scan-build -o analysis_output avr-gcc -mmcu=atmega2560 -o firmware.elf IoT/source.c  # Adjust source and output filenames
+      env:
+        SCAN_BUILD: "1"
+
+    - name: Upload analysis results
+      uses: actions/upload-artifact@v2
+      with:
+        name: analysis-results
+        path: analysis_output
