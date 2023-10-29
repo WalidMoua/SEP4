@@ -1,0 +1,28 @@
+name: FrontEnd ESLint
+
+on:
+  pull_request:
+    paths:
+      - 'FrontEnd/**' 
+
+jobs:
+  eslint_check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out the code in the 'FrontEnd' folder
+      uses: actions/checkout@v2
+      with:
+        path: 'FrontEnd'
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+
+    - name: Install dependencies
+      run: cd FrontEnd && npm install
+
+    - name: Run ESLint
+      run: cd FrontEnd && npx eslint . --ext .js,.jsx
+
