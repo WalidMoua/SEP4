@@ -13,7 +13,7 @@ function PlantList() {
       const newPlant = {
         name: newPlantName,
         location: newPlantLocation,
-        status: newPlantStatus,
+        status: newPlantStatus
       };
       setPlants([...plants, newPlant]);
       setNewPlantName('');
@@ -31,7 +31,7 @@ function PlantList() {
           value={newPlantName}
           onChange={(e) => setNewPlantName(e.target.value)}
         />
-         <input
+        <input
           type="text"
           placeholder="Location"
           value={newPlantLocation}
