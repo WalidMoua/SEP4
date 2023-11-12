@@ -27,7 +27,7 @@ void test_wifi_AT()
 }
 
 void test_wifi_Connect_to_accessPoint_wrong_password()
-{
+{ 
 
     TEST_ASSERT_EQUAL(WIFI_FAIL, wifi_command_join_AP("Den gamle daarlige router", "vildfredd"));
 }

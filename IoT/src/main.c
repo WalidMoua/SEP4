@@ -4,6 +4,7 @@
 #include "display.h"
 #include "leds.h"
 #include "uvsensor.h"
+#include "moisture.h"
 #include "buzzer.h"
 #include "buttons.h"
 #include "periodic_task.h"
@@ -13,52 +14,106 @@
 #include "avr/power.h"
 #include "pir.h"
 #include "tone.h"
-#include <stdio.h>
 #include "servo.h"
 #include "wifi.h"
-#include "moisture.h"
+#include "pump.h"
 
+#include <string.h>
+#include <stdio.h>
 
 int main(void)
 {
-    pc_comm_init(9600, NULL);
-    wifi_init();
-    wifi_command_join_AP("ONEPLUS_co_apmkvh", "trudnehaslo");
-    wifi_command_create_TCP_connection("192.168.94.240", 23, NULL, NULL);
 
+  pc_comm_init(9600, NULL);
 
-    display_init();                                 // Initialize the display
-    leds_init();                                    // Initialize the LEDs
-    uvsensor_init();                                // Initialize the UV sensor
-    dht11_init();                                   // Initialize the DHT11 sensor
-    hc_sr04_init();                                 // Initialize the HC-SR04 sensor
-    display_setValues(2, 3, 16, 16);                //Port number display as 23
+  pc_comm_send_string_blocking("LOADING!\n");
 
-uint8_t humidity_integer, humidity_decimal, temperature_integer, temperature_decimal;        // Variables for humidity and temperature
+  wifi_init();
 
-while (1) {
+  WIFI_ERROR_MESSAGE_t errorcode = wifi_command_join_AP("iPhone Kevin ", "sockstobee");
+  if (errorcode == WIFI_OK)
+  {
+    pc_comm_send_string_blocking("\nWifi connect OK\n");
+  }
+  else if (errorcode == WIFI_FAIL)
+  {
+    pc_comm_send_string_blocking("\nWifi connect FAIL\n");
+  }
+  else if (errorcode == WIFI_ERROR_RECEIVED_ERROR)
+  {
+    pc_comm_send_string_blocking("\nWifi connect ERROR\n");
+  }
+  else if (errorcode == WIFI_ERROR_NOT_RECEIVING)
+  {
+    pc_comm_send_string_blocking("\nWifi connect NOT RECEIVING\n");
+  }
+  else if (errorcode == WIFI_ERROR_RECEIVING_GARBAGE)
+  {
+    pc_comm_send_string_blocking("\nWifi connect GARBAGE\n");
+  }
 
+  errorcode = wifi_command_create_TCP_connection("20.107.165.243", 23, NULL, NULL);
+  if (errorcode == WIFI_OK)
+  {
+    pc_comm_send_string_blocking("Wifi tcp OK\n\n");
+  }
+  else if (errorcode == WIFI_FAIL)
+  {
+    pc_comm_send_string_blocking("Wifi tcp FAIL\n\n");
+  }
+  else if (errorcode == WIFI_ERROR_RECEIVED_ERROR)
+  {
+    pc_comm_send_string_blocking("Wifi tcp ERROR\n\n");
+  }
+  else if (errorcode == WIFI_ERROR_NOT_RECEIVING)
+  {
+    pc_comm_send_string_blocking("Wifi tcp NOT RECEIVING\n\n");
+  }
+  else if (errorcode == WIFI_ERROR_RECEIVING_GARBAGE)
+  {
+    pc_comm_send_string_blocking("Wifi tcp GARBAGE\n\n");
+  }
 
-int waterLevel = hc_sr04_takeMeasurement();      // Water level measurement
-int uvValue = uvsensor_read();                   // UV sensor measurement
-char humidityTemperatureBuffer[128];             // Buffer for humidity and temperature
-char outputBuffer[128];                          // Buffer for water level and UV sensor
-char combinedBuffer[128];                        // Buffer for combined data
+  display_init();
+  leds_init();
+  uvsensor_init();
+  moisture_init();
+  pump_init();
+  hc_sr04_init();
+  buttons_init();
+  dht11_init();
 
-        if (dht11_get(&humidity_integer, &humidity_decimal, &temperature_integer, &temperature_decimal) == DHT11_OK) {
-            snprintf(humidityTemperatureBuffer, sizeof(humidityTemperatureBuffer), "H = %d.%d%% and T = %d.%d C", humidity_integer, humidity_decimal, temperature_integer, temperature_decimal);
-           
-        }
+  display_setValues(16, 10, 16, 17);
 
-        snprintf(outputBuffer, sizeof(outputBuffer), "Port: 23 \nTK: %d \nUV: %d \n%s", waterLevel, uvValue, humidityTemperatureBuffer);
+  char caaray[128];
+  uint8_t humidity_integer, humidity_decimal, temperature_integer, temperature_decimal; // Variables for humidity and temperature
 
-        snprintf(combinedBuffer, sizeof(combinedBuffer), "%s%s", humidityTemperatureBuffer, outputBuffer);
+  pc_comm_send_string_blocking("READY!\n\n");
 
-        // Send data to both PC and Wi-Fi
-        pc_comm_send_string_blocking(combinedBuffer);
-        wifi_command_TCP_transmit((char*)combinedBuffer, 128);
-    
+  pump_run_timeout(2000);
+
+  while (1)
+  {
+
+    DHT11_ERROR_MESSAGE_t error = dht11_get(&humidity_integer, &humidity_decimal, &temperature_integer, &temperature_decimal);
+    if (error == DHT11_OK)
+    {
+      sprintf(caaray, "{\n\"Measurment\": %d,\n\"Moisture\": %d,\n\"UV\": %d,\n\"Humidity\": %d.%d,\n\"Temperature\": %d.%d\n}\n\n",
+              hc_sr04_takeMeasurement(), moisture_read(), uvsensor_read(), humidity_integer, humidity_decimal, temperature_integer, temperature_integer);
+    }
+    else if (error == DHT11_FAIL)
+    {
+      sprintf(caaray, "{\n\"Measurment\": %d,\n\"Moisture\": %d,\n\"UV\": %d,\n}\n\n",
+              hc_sr04_takeMeasurement(), moisture_read(), uvsensor_read());
+    }
+
+    int length = strlen(caaray);
+
+    pc_comm_send_string_blocking(caaray);
+    wifi_command_TCP_transmit((uint8_t *)caaray, length);
+
     _delay_ms(3000);
-}
-return 0; 
+  }
+
+  return 0;
 }
